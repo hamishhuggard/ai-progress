@@ -37,13 +37,15 @@ function linearRegression(y,x){
     return [model, inverseModel, slope, intercept];
 }
 
+let dots, labels;
+
 //Read the data
 d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXtCU0q7OIPuc4/export?format=csv#gid=0").then( function(data) {
 
     console.table(data);
 
     const y_quantity = 'Training compute (FLOPs)'
-    //y_axis = 'Parameters'
+    //const y_quantity = 'Parameters'
 
     // remove models which don't have parameter counts
     data = data.filter(x => x[y_quantity] != '');
@@ -58,15 +60,6 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
     data = data.sort((a,b) => a.Year - b.Year);
 
     data = data.filter(x => !Number.isNaN(x.logY));
-
-    // only use GPTs
-    GPTs = [
-        'InstructGPT', // no parameter count
-        'GPT-3 175B (davinci)',
-        'GPT-2',
-        'GPT',
-    ]
-    data = data.filter(x => GPTs.indexOf(x.System) > -1)
 
     let X = data.map(x => x.Year);
     let Y = data.map(x => x.logY);
@@ -183,7 +176,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
     */
 
 	// Add dots
-	svg.append('g')
+	dots = svg.append('g')
 		.selectAll("dot")
 		.data(data)
 		.join("circle")
@@ -195,7 +188,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
     // Add labels
     const d2labelY = x => x.System==='BaGuaLu' ? x.logY+0.1 : x.logY;
 
-	svg.append("g")
+	labels = svg.append("g")
 		.attr("font-family", "sans-serif")
 		.attr("font-size", 10)
 		.attr("stroke-linejoin", "round")
@@ -208,10 +201,68 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
             .attr("x", d => x(d.Year) )
             .attr("y", d => y(d2labelY(d)) )
             .attr("id", d => d.System.split(' ')[0])
-			.text(d => d.System)
-			.call(text => text.clone(true))
-			.attr("fill", "none")
-			//.attr("stroke", halo)
-			//.attr("stroke-width", haloWidth);
+			.text(d => `${d.System} (${d.Task})`)
+            .style('visibility', 'hidden')
+
+    // not sure what this code is
+    //labels
+    //    .call(text => text.clone(true))
+    //    .attr("fill", "none")
+    //    .attr("stroke", halo)
+    //    .attr("stroke-width", haloWidth);
+
 
 })
+
+function selectFromFilter(filter) {
+    const antifilter = x => !filter(x)
+    console.log('selection function')
+    console.log(labels)
+    console.log(labels.filter(filter))
+    console.log(labels.filter(antifilter))
+    dots
+        .filter(filter)
+        .style('visibility', 'visible')
+        .transition()
+        .duration(1000)
+        .attr("r", 10)
+    dots
+        .filter(antifilter)
+        .style('visibility', 'visible')
+        .transition()
+        .duration(1000)
+        .attr("r", 2)
+
+    labels
+        .style('visibility', 'visible')
+
+    labels
+        .filter(filter)
+        .style('visibility', 'visible')
+
+    labels
+        .filter(antifilter)
+        .style('visibility', 'hidden')
+}
+
+function selectGPTs() {
+    const GPTs = [
+        'GPT-3 175B (davinci)',
+        'GPT-2',
+        'GPT',
+    ]
+    selectFromFilter(x => GPTs.indexOf(x.System) > -1)
+}
+
+function selectGANs() {
+    const tasks = [
+        'Image generation',
+        'Text-to-image',
+        'Video generation',
+    ]
+    selectFromFilter(x => tasks.indexOf(x.Task) > -1)
+}
+
+function selectNone() {
+    selectFromFilter(x => false)
+}
