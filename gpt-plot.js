@@ -33,14 +33,27 @@ function linearRegression(y,x){
     const model = (x) => intercept + slope*x; 
     const inverseModel = (x) => (x-intercept)/slope;
 
-    console.log(r2);
-    return [model, inverseModel, slope, intercept];
+    const xMin = Math.min(...y)
+    const xMax = Math.max(...y)
+    const lineMargin = 0;//Math.max(1, (xMax-xMin))
+    const lineStart = xMin - lineMargin;
+    const lineEnd = xMax + lineMargin;
+
+
+    return [
+        model, 
+        inverseModel,
+        lineStart,
+        lineEnd,
+        slope,
+        intercept
+    ];
 }
 
-let dots, labels;
+let dots, labels, data, x, y;
 
 //Read the data
-d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXtCU0q7OIPuc4/export?format=csv#gid=0").then( function(data) {
+d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXtCU0q7OIPuc4/export?format=csv#gid=0").then( function(dataArg) {
 
     console.table(data);
 
@@ -48,7 +61,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
     //const y_quantity = 'Parameters'
 
     // remove models which don't have parameter counts
-    data = data.filter(x => x[y_quantity] != '');
+    data = dataArg.filter(x => x[y_quantity] != '');
 
     data.forEach(x => {
         x[y_quantity] = parseFloat(x[y_quantity]);
@@ -61,37 +74,10 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
 
     data = data.filter(x => !Number.isNaN(x.logY));
 
-    data.forEach((x,i) => {
-        x.idx = i
-    });
+    console.table(data);
 
     let X = data.map(x => x.Year);
     let Y = data.map(x => x.logY);
-
-    const [params2year, year2regressionY] = linearRegression(X, Y);
-
-    // Add point for synapses in the human brain
-    [
-        //{
-        //    Parameters: 1.5e14, 
-        //    System: 'Synapses in human brain',
-        //},
-        //{
-        //    Parameters: 8.6e10, 
-        //    System: 'Neurons in human brain',
-        //},
-        //{
-        //    Parameters: 1.5e14*8e9,
-        //    System: 'Synapses in all human brains',
-        //}
-    ].forEach(benchmark => {
-        const {Parameters} = benchmark;
-        benchmark.logY = Math.log10(Parameters);
-        benchmark.Year = params2year(benchmark.logY);
-        data.push(benchmark);
-    })
-
-    console.table(data);
 
     Y = data.map(x => x.logY);
     X = data.map(x => x.Year);
@@ -104,7 +90,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
 	const yMargin = (maxY-minY)*0.05;
 
     // Add X axis
-    const x = d3.scaleLinear()
+    x = d3.scaleLinear()
         .domain([minX-xMargin, maxX+xMargin])
         .range([ 0, width ]);
     svg.append("g")
@@ -112,7 +98,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
         .call(d3.axisBottom(x).tickFormat(d3.format('d')));
 
     // Add Y axis
-    const y = d3.scaleLinear()
+    y = d3.scaleLinear()
         .domain([minY-yMargin, maxY+yMargin])
         .range([ height, 0]);
     svg.append("g")
@@ -133,51 +119,6 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
 	  .attr("y", -margin.left + 20)
 	  .attr("x", -margin.top - height/2 + 80)
 	  .text(`log₁₀( ${y_quantity} )`)
-
-    // Add linear regression line
-    svg.append("path")
-        .datum([
-            {
-                Year: 2012,
-                logY: year2regressionY(2012),
-            },
-            {
-                Year: 2024,
-                logY: year2regressionY(2024),
-            },
-        ])
-        .attr("fill", "none")
-        .attr("stroke", "rgba(255,0,0,0.5)")
-        .attr("stroke-width", 1.5)
-        .attr("d", d3.line()
-            .x(d => x(d.Year))
-            .y(d => y(d.logY))
-        )
-        .style("stroke-dasharray", ("3, 3"))
-
-    /*
-    // add brain synapse line
-    const logSynapses = Math.log10(1.5e14);
-    svg.append("path")
-        .datum([
-            {
-                Year: 2012,
-                logY: logSynapses,
-            },
-            {
-                Year: 2024,
-                logY: logSynapses,
-            },
-        ])
-        .attr("fill", "none")
-        .attr("stroke", "rgba(255,0,0,0.5)")
-        .attr("stroke-width", 1.5)
-        .attr("d", d3.line()
-            .x(d => x(d.Year))
-            .y(d => y(d.logY))
-        )
-        .style("stroke-dasharray", ("3, 3"))
-    */
 
 	// Add dots
 	dots = svg.append('g')
@@ -215,6 +156,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
     //    .attr("stroke", halo)
     //    .attr("stroke-width", haloWidth);
 
+    next()
 
 })
 
@@ -284,6 +226,54 @@ function selectNone() {
     selectFromFilter(x => false)
 }
 
+function preAlexnetRegression() {
+    regressionBetween(1900, 2012)
+}
+
+function postAlexnetRegression() {
+    regressionBetween(2012, 2100)
+}
+
+function regressionBetween(fromYear, toYear) {
+
+    const subdata = data.filter(x => fromYear <= x.Year && x.Year < toYear);
+
+    let X = subdata.map(x => x.Year);
+    let Y = subdata.map(x => x.logY);
+
+    const [
+        params2year, 
+        year2regressionY, 
+        lineStart, 
+        lineEnd
+    ] = linearRegression(X, Y);
+
+    console.log({params2year, year2regressionY, lineStart, lineEnd})
+
+    // 50, 500 -> 850, 170
+    console.log({startX: x(lineStart), endX: x(lineEnd)})
+
+    svg.append("path")
+        .datum([
+            {
+                Year: lineStart,
+                logY: year2regressionY(lineStart),
+            },
+            {
+                Year: lineEnd,
+                logY: year2regressionY(lineEnd),
+            },
+        ])
+        .attr("fill", "none")
+        .attr("stroke", "rgba(255,0,0,0.5)")
+        .attr("stroke-width", 1.5)
+        .attr("d", d3.line()
+            .x(d => x(d.Year))
+            .y(d => y(d.logY))
+        )
+        .style("stroke-dasharray", ("3, 3"))
+}
+
 let slideN = 0;
 function next() {
 	slideN++;
@@ -295,5 +285,8 @@ function next() {
         selectGANs();
     } else if (slideN===4) {
         selectNone();
+        preAlexnetRegression();
+    } else if (slideN===5) {
+        postAlexnetRegression();
     }
 }
