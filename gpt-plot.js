@@ -1,7 +1,7 @@
 // set the dimensions and margins of the graph
 const margin = {top: 10, right: 150, bottom: 50, left: 60},
-        width = 560 - margin.left - margin.right,
-        height = 400 - margin.top - margin.bottom;
+        width = 1200 - margin.left - margin.right,
+        height = 600 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
 const svg = d3.select("#gpt-viz")
@@ -60,6 +60,10 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
     data = data.sort((a,b) => a.Year - b.Year);
 
     data = data.filter(x => !Number.isNaN(x.logY));
+
+    data.forEach((x,i) => {
+        x.idx = i
+    });
 
     let X = data.map(x => x.Year);
     let Y = data.map(x => x.logY);
@@ -182,7 +186,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
 		.join("circle")
 			.attr("cx", d => x(d.Year) )
 			.attr("cy", d => y(d.logY) )
-			.attr("r", 2)
+			.attr("r", 0)
 			.style("fill", "#69b3a2")
 
     // Add labels
@@ -213,6 +217,19 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
 
 
 })
+
+function showDots() {
+    dots
+		.transition()
+		//.delay(function(d,i){return(1000+i*20)})
+		.delay(function(d,i){return(500+(d.Year-1950)*20)})
+		.duration(500)
+		.attr("r", 5)
+		.transition()
+		.duration(500)
+		.attr("r", 2)
+
+}
 
 function selectFromFilter(filter) {
     const antifilter = x => !filter(x)
@@ -265,4 +282,18 @@ function selectGANs() {
 
 function selectNone() {
     selectFromFilter(x => false)
+}
+
+let slideN = 0;
+function next() {
+	slideN++;
+    if (slideN===1) {
+        showDots();
+    } else if (slideN===2) {
+        selectGPTs();
+    } else if (slideN===3) {
+        selectGANs();
+    } else if (slideN===4) {
+        selectNone();
+    }
 }
