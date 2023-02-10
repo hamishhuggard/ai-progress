@@ -50,7 +50,7 @@ function linearRegression(y,x){
     ];
 }
 
-let dots, labels, data, x, y;
+let dots, labels, data, x, y, xAxis;
 
 //Read the data
 d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXtCU0q7OIPuc4/export?format=csv#gid=0").then( function(dataArg) {
@@ -93,7 +93,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
     x = d3.scaleLinear()
         .domain([minX-xMargin, maxX+xMargin])
         .range([ 0, width ]);
-    svg.append("g")
+    xAxis = svg.append("g")
         .attr("transform", `translate(0, ${height})`)
         .call(d3.axisBottom(x).tickFormat(d3.format('d')));
 
@@ -226,12 +226,15 @@ function selectNone() {
     selectFromFilter(x => false)
 }
 
+let preAlexLine, postAlexLine;
+let preAlexPoints, postAlexPoints;
+
 function preAlexnetRegression() {
-    regressionBetween(1900, 2012)
+    [preAlexLine, preAlexPoints] = regressionBetween(1900, 2012);
 }
 
 function postAlexnetRegression() {
-    regressionBetween(2012, 2100)
+    [postAlexLine, postAlexPoints] = regressionBetween(2012, 2100);
 }
 
 function regressionBetween(fromYear, toYear) {
@@ -253,17 +256,19 @@ function regressionBetween(fromYear, toYear) {
     // 50, 500 -> 850, 170
     console.log({startX: x(lineStart), endX: x(lineEnd)})
 
-    svg.append("path")
-        .datum([
-            {
-                Year: lineStart,
-                logY: year2regressionY(lineStart),
-            },
-            {
-                Year: lineEnd,
-                logY: year2regressionY(lineEnd),
-            },
-        ])
+	points = [
+		{
+			Year: lineStart,
+			logY: year2regressionY(lineStart),
+		},
+		{
+			Year: lineEnd,
+			logY: year2regressionY(lineEnd),
+		},
+	]
+
+    const path = svg.append("path")
+        .datum(points)
         .attr("fill", "none")
         .attr("stroke", "rgba(255,0,0,0.5)")
         .attr("stroke-width", 1.5)
@@ -272,6 +277,42 @@ function regressionBetween(fromYear, toYear) {
             .y(d => y(d.logY))
         )
         .style("stroke-dasharray", ("3, 3"))
+	return [path, points]
+}
+
+function extendAxis(toYear) {
+
+	// Get the value of the button
+	xlim = this.value
+
+	// Update X axis
+	x.domain([1950,2100])
+	xAxis.transition().duration(1000).call(d3.axisBottom(x))
+
+	// Update regression lines
+	preAlexLine
+        .datum(preAlexPoints)
+		.transition()
+		.duration(1000)
+        .attr("d", d3.line()
+            .x(d => x(d.Year))
+            .y(d => y(d.logY))
+        )
+	postAlexLine
+        .datum(postAlexPoints)
+		.transition()
+		.duration(1000)
+        .attr("d", d3.line()
+            .x(d => x(d.Year))
+            .y(d => y(d.logY))
+        )
+
+	// Update chart
+	svg.selectAll("circle")
+		.data(data)
+		.transition()
+		.duration(1000)
+		.attr("cx", d => x(d.Year) )
 }
 
 let slideN = 0;
@@ -288,5 +329,8 @@ function next() {
         preAlexnetRegression();
     } else if (slideN===5) {
         postAlexnetRegression();
+    } else if (slideN===6) {
+        extendAxis(2100);
     }
 }
+
