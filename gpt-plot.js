@@ -1,5 +1,5 @@
 // set the dimensions and margins of the graph
-const margin = {top: 10, right: 150, bottom: 50, left: 60},
+const margin = {top: 10, right: 150, bottom: 50, left: 80}, // left was formerly 60
         width = 1200 - margin.left - margin.right,
         height = 600 - margin.top - margin.bottom;
 
@@ -66,7 +66,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
     data.forEach(x => {
         x[y_quantity] = parseFloat(x[y_quantity]);
         x.Year = parseInt(x.Year);
-        x.logY = Math.log10(x[y_quantity]);
+        x.logY = Math.log10(x[y_quantity] * 1131415.12 / 3.14e23);
     });
 
     data = data.sort((a,b) => b[y_quantity] - a[y_quantity]);
@@ -97,12 +97,25 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
         .attr("transform", `translate(0, ${height})`)
         .call(d3.axisBottom(x).tickFormat(d3.format('d')));
 
+	const compactFormatter = new Intl.NumberFormat("en", {notation: "compact"}).format;
+	function formatter(x) { 
+        if (x==-1)
+            return '10¢';
+        else if (x==-2)
+            return '1¢';
+        else if (x<-2)
+            return `10^${x-2}¢`;
+        else
+            return '$'+compactFormatter(Math.pow(10,x));
+    }
+
     // Add Y axis
     y = d3.scaleLinear()
         .domain([minY-yMargin, maxY+yMargin])
         .range([ height, 0]);
     svg.append("g")
-        .call(d3.axisLeft(y));
+        //.call(d3.axisLeft(y));
+        .call(d3.axisLeft(y).tickFormat(formatter))
 
 
 	// Add X axis label:
@@ -119,6 +132,7 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
 	  .attr("y", -margin.left + 20)
 	  .attr("x", -margin.top - height/2 + 80)
 	  .text(`log₁₀( ${y_quantity} )`)
+	  .text('present cost of training (2022 USD)')
 
 	// Add dots
 	dots = svg.append('g')
