@@ -10,6 +10,7 @@ const svg = d3.select("#gpt-viz")
     .attr("height", height + margin.top + margin.bottom)
     .append("g")
     .attr("transform", `translate(${margin.left}, ${margin.top})`);
+
     
 
 
@@ -50,18 +51,39 @@ function linearRegression(y,x){
     ];
 }
 
-let dots, labels, data, x, y, xAxis;
+let dots, labels, data, x, y, xAxis, yAxis, ydomain;
+const compactFormatter = new Intl.NumberFormat("en", {notation: "compact"}).format;
+function formatter(x) { 
+    if (x==-1)
+        return '10¢';
+    else if (x==-2)
+        return '1¢';
+    else if (x<-2)
+        return `10^${x-2}¢`;
+    else
+        return '$'+compactFormatter(Math.pow(10,x));
+}
 
-//Read the data
-d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXtCU0q7OIPuc4/export?format=csv#gid=0").then( function(dataArg) {
+Promise.all([
+    d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXtCU0q7OIPuc4/export?format=csv#gid=0"),
+    d3.csv("https://docs.google.com/spreadsheets/d/106Bw4SgH7SbJPGfyV6LnlsB81-JHueoennE52sENrgo/export?format=csv#gid=0")
+]).then(function(files) {
 
-    console.table(data);
+    data = files[0];
+    benchmarks = files[1];
+
+    delete benchmarks.columns
+
+    benchmarks.forEach(x => {
+        x.cost = parseFloat(x['2022 USD']);
+    });
+    console.table(benchmarks);
 
     const y_quantity = 'Training compute (FLOPs)'
     //const y_quantity = 'Parameters'
 
     // remove models which don't have parameter counts
-    data = dataArg.filter(x => x[y_quantity] != '');
+    data = data.filter(x => x[y_quantity] != '');
 
     data.forEach(x => {
         x[y_quantity] = parseFloat(x[y_quantity]);
@@ -97,23 +119,13 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
         .attr("transform", `translate(0, ${height})`)
         .call(d3.axisBottom(x).tickFormat(d3.format('d')));
 
-	const compactFormatter = new Intl.NumberFormat("en", {notation: "compact"}).format;
-	function formatter(x) { 
-        if (x==-1)
-            return '10¢';
-        else if (x==-2)
-            return '1¢';
-        else if (x<-2)
-            return `10^${x-2}¢`;
-        else
-            return '$'+compactFormatter(Math.pow(10,x));
-    }
 
     // Add Y axis
+    ydomain = [minY-yMargin, maxY+yMargin]
     y = d3.scaleLinear()
         .domain([minY-yMargin, maxY+yMargin])
         .range([ height, 0]);
-    svg.append("g")
+    yAxis = svg.append("g")
         //.call(d3.axisLeft(y));
         .call(d3.axisLeft(y).tickFormat(formatter))
 
@@ -172,6 +184,8 @@ d3.csv("https://docs.google.com/spreadsheets/d/1AAIebjNsnJj_uKALHbXNfn3_YsT6sHXt
 
     next()
 
+}).catch(function(err) {
+    console.log(err)
 })
 
 function showDots() {
@@ -301,7 +315,13 @@ function extendAxis(toYear) {
 
 	// Update X axis
 	x.domain([1950,2100])
+	x.domain([2012,2040])
 	xAxis.transition().duration(1000).call(d3.axisBottom(x))
+
+	// Update Y axis
+	y.domain([ydomain[1]*0.5+ydomain[0]*0.5, ydomain[1]*1.5])
+	yAxis.transition().duration(1000)
+        .call(d3.axisLeft(y).tickFormat(formatter))
 
 	// Update regression lines
 	preAlexLine
@@ -327,6 +347,7 @@ function extendAxis(toYear) {
 		.transition()
 		.duration(1000)
 		.attr("cx", d => x(d.Year) )
+		.attr("cy", d => y(d.logY) )
 }
 
 let slideN = 0;
@@ -345,6 +366,9 @@ function next() {
         postAlexnetRegression();
     } else if (slideN===6) {
         extendAxis(2100);
+    } else if (slideN===7) {
+        d3.select('#info')
+            .html('we estimated how much it would cost to train these models today, based on GPT-3s training cost')
     }
 }
 
