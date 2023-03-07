@@ -215,10 +215,6 @@ function showDots() {
 
 function selectFromFilter(filter) {
     const antifilter = x => !filter(x)
-    console.log('selection function')
-    console.log(labels)
-    console.log(labels.filter(filter))
-    console.log(labels.filter(antifilter))
     dots
         .filter(filter)
         .style('visibility', 'visible')
@@ -291,10 +287,6 @@ function regressionBetween(fromYear, toYear) {
         lineEnd
     ] = linearRegression(X, Y);
 
-    console.log({params2year, year2regressionY, lineStart, lineEnd})
-
-    // 50, 500 -> 850, 170
-    console.log({startX: x(lineStart), endX: x(lineEnd)})
 
 	points = [
 		{
