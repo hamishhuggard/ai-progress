@@ -51,7 +51,7 @@ function linearRegression(y,x){
     ];
 }
 
-let dots, labels, data, x, y, xAxis, yAxis, ydomain;
+let dots, labels, data, x, y, xAxis, yAxis, ydomain, scatter;
 const compactFormatter = new Intl.NumberFormat("en", {notation: "compact"}).format;
 function formatter(x) { 
     if (x==-1)
@@ -129,6 +129,18 @@ Promise.all([
         //.call(d3.axisLeft(y));
         .call(d3.axisLeft(y).tickFormat(formatter))
 
+	// Add a clipPath: everything out of this area won't be drawn.
+	var clip = svg.append("defs").append("SVG:clipPath")
+		.attr("id", "clip")
+		.append("SVG:rect")
+		.attr("width", width )
+		.attr("height", height )
+		.attr("x", 0)
+		.attr("y", 0);
+
+	scatter = svg.append('g')
+		.attr("clip-path", "url(#clip)")
+
 
 	// Add X axis label:
 	svg.append("text")
@@ -147,7 +159,7 @@ Promise.all([
 	  .text('present cost of training (2022 USD)')
 
 	// Add dots
-	dots = svg.append('g')
+	dots = scatter.append('g')
 		.selectAll("dot")
 		.data(data)
 		.join("circle")
@@ -159,7 +171,7 @@ Promise.all([
     // Add labels
     const d2labelY = x => x.System==='BaGuaLu' ? x.logY+0.1 : x.logY;
 
-	labels = svg.append("g")
+	labels = scatter.append("g")
 		.attr("font-family", "sans-serif")
 		.attr("font-size", 10)
 		.attr("stroke-linejoin", "round")
@@ -295,7 +307,7 @@ function regressionBetween(fromYear, toYear) {
 		},
 	]
 
-    const path = svg.append("path")
+    const path = scatter.append("path")
         .datum(points)
         .attr("fill", "none")
         .attr("stroke", "rgba(255,0,0,0.5)")
@@ -341,7 +353,7 @@ function extendAxis(toYear) {
             .y(d => y(d.logY))
         )
 
-	// Update chart
+	// Update dots
 	svg.selectAll("circle")
 		.data(data)
 		.transition()
