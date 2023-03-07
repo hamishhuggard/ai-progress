@@ -1,6 +1,6 @@
 // set the dimensions and margins of the graph
-const margin = {top: 10, right: 150, bottom: 50, left: 80}, // left was formerly 60
-        width = 1200 - margin.left - margin.right,
+const margin = {top: 10, right: 20, bottom: 20, left: 80}, // left was formerly 60
+        width = 1000 - margin.left - margin.right,
         height = 600 - margin.top - margin.bottom;
 
 // append the svg object to the body of the page
@@ -75,7 +75,8 @@ Promise.all([
     delete benchmarks.columns
 
     benchmarks.forEach(x => {
-        x.cost = parseFloat(x['2022 USD']);
+        x.value = parseFloat(x['2022 USD']);
+        x.name = x.Benchmark;
     });
     console.table(benchmarks);
 
@@ -130,7 +131,7 @@ Promise.all([
         .call(d3.axisLeft(y).tickFormat(formatter))
 
 	// Add a clipPath: everything out of this area won't be drawn.
-	var clip = svg.append("defs").append("SVG:clipPath")
+	let clip = svg.append("defs").append("SVG:clipPath")
 		.attr("id", "clip")
 		.append("SVG:rect")
 		.attr("width", width )
@@ -193,6 +194,8 @@ Promise.all([
     //    .attr("fill", "none")
     //    .attr("stroke", halo)
     //    .attr("stroke-width", haloWidth);
+
+    addSlider(benchmarks);
 
     next()
 
@@ -354,6 +357,115 @@ function extendAxis(toYear) {
 		.attr("cx", d => x(d.Year) )
 		.attr("cy", d => y(d.logY) )
 }
+
+function addSlider(data) {
+
+    // set the dimensions and margins of the graph
+    let margin = {top: 15, right: 5, bottom: 15, left: 5},
+        width = 400,
+        height = 400,
+        buttonX = 5,
+        textX = 20;
+
+    // create a svg element in the body of the page
+    let svg = d3.select("#slider")
+      .append("svg")
+        .attr("width", width + margin.left + margin.right)
+        .attr("height", height + margin.top + margin.bottom)
+      .append("g")
+        .attr("transform",
+              "translate(" + margin.left + "," + margin.top + ")");
+
+    // get the min and max values from the data
+    let minValue = d3.min(data, function(d) { return +d.value; });
+    let maxValue = d3.max(data, function(d) { return +d.value; });
+
+    // create a linear scale for the slider
+    let y = d3.scaleLinear()
+        .domain([minValue, maxValue])
+        .range([height, 0])
+        .clamp(true);
+
+    // create the slider
+    let slider = svg.append("g")
+        .attr("class", "slider")
+        //.attr("transform", "translate(" + width / 2 + ",0)");
+
+    // create the track
+    slider.append("line")
+        .attr("class", "track")
+        .attr("y1", y.range()[1])
+        .attr("y2", y.range()[0])
+        .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+        .attr("class", "track-inset")
+        .select(function() { return this.parentNode.appendChild(this.cloneNode(true)); })
+        .attr("class", "track-overlay")
+        .call(d3.drag()
+            .on("start.interrupt", function() { slider.interrupt(); })
+            .on("start drag", function() { hue(y.invert(d3.event.y)); }));
+
+    // create the markers
+    let markers = slider.selectAll("circle")
+        .data(data)
+        .enter()
+        .append("circle")
+        .attr("r", 3)
+        .attr("cy", function(d) { return y(d.value); })
+        .attr("cx", buttonX)
+        .attr("class", "marker")
+        .attr("id", function(d) { return d.name; })
+
+    // add labels to the markers
+    slider.selectAll("text")
+        .data(data)
+        .enter()
+        .append("text")
+        .attr("class", "marker-label")
+        .attr("x", textX)
+        .attr("y", function(d) { return y(d.value) + 5; })
+        .text(function(d) { return d.name; });
+
+    // function to update the color of the markers
+    function hue(h) {
+        markers
+            .attr("cy", function(d) { return y(d.value); })
+            .sort(function(a, b) { return d3.ascending(a.value, b.value); });
+    }
+
+    const knobRadius = 10; // radius of the knob circle
+    const defaultValue = 1e10;
+
+    // create knob element
+    const knob = slider.append("circle")
+        .attr("class", "knob")
+        .attr("r", knobRadius)
+        .attr("cx", buttonX) // position the knob in the middle of the slider
+        .attr("cy", y(defaultValue))
+        .style("fill", "grey")
+        .call(d3.drag()
+            .on("drag", dragMove)
+            .on("end", dragEnd));
+
+        function dragMove(event) {
+            let newY = Math.max(0, Math.min(height, event.y - margin.top));
+            knob.attr("cy", newY);
+        }
+
+        function dragEnd(event) {
+            let value = y.invert(knob.attr("cy"));
+            console.log("Selected value: " + value.toFixed(2));
+        }
+
+    // function to update the position of the knob based on the slider value
+    function updateKnobPosition(value) {
+        knob.attr("cy", y(value));
+    }
+
+    // call the updateKnobPosition function with the default value to position the knob on initialization
+    updateKnobPosition(defaultValue);
+
+}
+
 
 let slideN = 0;
 function next() {
