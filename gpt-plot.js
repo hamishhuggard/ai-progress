@@ -320,7 +320,8 @@ function extendAxis(toYear) {
 	// Update X axis
 	x.domain([1950,2100])
 	x.domain([2012,2040])
-	xAxis.transition().duration(1000).call(d3.axisBottom(x))
+	xAxis.transition().duration(1000)
+        .call(d3.axisBottom(x).tickFormat(d3.format('d')));
 
 	// Update Y axis
 	y.domain([ydomain[1]*0.5+ydomain[0]*0.5, ydomain[1]*1.5])
