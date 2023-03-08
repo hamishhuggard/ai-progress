@@ -53,7 +53,7 @@ function linearRegression(y,x){
 
 let dots, labels, data, x, y, xAxis, yAxis, ydomain, scatter;
 const compactFormatter = new Intl.NumberFormat("en", {notation: "compact"}).format;
-function formatter(x) { 
+function dollarFormatter(x) { 
     if (x==-1)
         return '10¢';
     else if (x==-2)
@@ -62,6 +62,9 @@ function formatter(x) {
         return `10^${x-2}¢`;
     else
         return '$'+compactFormatter(Math.pow(10,x));
+}
+function oomFormatter(x) {
+    return `10^${x}`;
 }
 
 Promise.all([
@@ -128,7 +131,8 @@ Promise.all([
         .range([ height, 0]);
     yAxis = svg.append("g")
         //.call(d3.axisLeft(y));
-        .call(d3.axisLeft(y).tickFormat(formatter))
+        //.call(d3.axisLeft(y).tickFormat(dollarFormatter))
+        .call(d3.axisLeft(y).tickFormat(oomFormatter))
 
 	// Add a clipPath: everything out of this area won't be drawn.
 	let clip = svg.append("defs").append("SVG:clipPath")
@@ -156,8 +160,9 @@ Promise.all([
 	  .attr("transform", "rotate(-90)")
 	  .attr("y", -margin.left + 20)
 	  .attr("x", -margin.top - height/2 + 80)
-	  .text(`log₁₀( ${y_quantity} )`)
-	  .text('present cost of training (2022 USD)')
+	  //.text(`log₁₀( ${y_quantity} )`)
+	  .text('Training compute (FLOPs)')
+	  //.text('present cost of training (2022 USD)')
 
 	// Add dots
 	dots = scatter.append('g')
@@ -315,6 +320,39 @@ function regressionBetween(fromYear, toYear) {
 	return [path, points]
 }
 
+let moorePoints, mooreLine;
+function addMooreLine(from, to) {
+
+    const anchor = data.filter(x => x.System === 'GPT-3 175B (davinci)')[0];
+
+    const x0 = anchor.Year
+    const y0 = anchor.logY
+
+    const x2y = x => Math.log10(2**((x-x0)/2.5)*10**y0)
+
+	moorePoints = [
+		{
+			Year: from,
+			logY: x2y(from),
+		},
+		{
+			Year: to,
+			logY: x2y(to),
+		},
+	]
+
+    mooreLine = scatter.append("path")
+        .datum(moorePoints)
+        .attr("fill", "none")
+        .attr("stroke", "rgba(255,0,0,0.5)")
+        .attr("stroke-width", 1.5)
+        .attr("d", d3.line()
+            .x(d => x(d.Year))
+            .y(d => y(d.logY))
+        )
+        .style("stroke-dasharray", ("3, 3"))
+}
+
 function extendAxis(toYear) {
 
 	// Get the value of the button
@@ -329,9 +367,17 @@ function extendAxis(toYear) {
 	// Update Y axis
 	y.domain([ydomain[1]*0.5+ydomain[0]*0.5, ydomain[1]*1.5])
 	yAxis.transition().duration(1000)
-        .call(d3.axisLeft(y).tickFormat(formatter))
+        .call(d3.axisLeft(y).tickFormat(compactFormatter))
 
-	// Update regression lines
+	// Update lines
+	mooreLine
+        .datum(moorePoints)
+		.transition()
+		.duration(1000)
+        .attr("d", d3.line()
+            .x(d => x(d.Year))
+            .y(d => y(d.logY))
+        )
 	preAlexLine
         .datum(preAlexPoints)
 		.transition()
@@ -473,6 +519,7 @@ function next() {
     if (slideN===1) {
         showDots();
     } else if (slideN===2) {
+        addMooreLine(2010, 2040);
         selectGPTs();
     } else if (slideN===3) {
         selectGANs();
