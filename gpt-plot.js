@@ -52,6 +52,7 @@ function linearRegression(y,x){
 }
 
 let dots, labels, data, x, y, xAxis, yAxis, ydomain, scatter;
+const d2labelY = x => x.System==='BaGuaLu' ? x.logY+0.1 : x.logY;
 const compactFormatter = new Intl.NumberFormat("en", {notation: "compact"}).format;
 function dollarFormatter(x) { 
     if (x==-1)
@@ -175,7 +176,6 @@ Promise.all([
 			.style("fill", "#69b3a2")
 
     // Add labels
-    const d2labelY = x => x.System==='BaGuaLu' ? x.logY+0.1 : x.logY;
 
 	labels = scatter.append("g")
 		.attr("font-family", "sans-serif")
@@ -402,6 +402,13 @@ function extendAxis(toYear) {
 		.duration(1000)
 		.attr("cx", d => x(d.Year) )
 		.attr("cy", d => y(d.logY) )
+
+	// Update labels
+    labels
+		.transition()
+		.duration(1000)
+        .attr("x", d => x(d.Year) )
+        .attr("y", d => y(d2labelY(d)) )
 }
 
 function addSlider(data) {
