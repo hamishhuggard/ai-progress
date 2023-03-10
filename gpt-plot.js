@@ -341,6 +341,8 @@ function addMooreLine(from, to) {
 		},
 	]
 
+    console.log('value', y0)
+    console.log('point0 y', y(moorePoints[0].logY))
     mooreLine = scatter.append("path")
         .datum(moorePoints)
         .attr("fill", "none")
@@ -351,6 +353,28 @@ function addMooreLine(from, to) {
             .y(d => y(d.logY))
         )
         .style("stroke-dasharray", ("3, 3"))
+}
+
+function updateMooreline(value) {
+    value = 10**value;
+    const anchor = data.filter(x => x.System === 'GPT-3 175B (davinci)')[0];
+    const x0 = anchor.Year
+    const y0 = Math.log10(value)
+    console.log('value', y0)
+    const x2y = x => Math.log10(2**((x-x0)/2.5)*10**y0)
+    const from = moorePoints[0].Year
+    const to = moorePoints[1].Year
+    console.log('xy2(to)', x2y(to))
+	moorePoints[0].logY = x2y(from)
+	moorePoints[1].logY = x2y(to)
+    console.log('point0 y', moorePoints[0].logY)
+    console.log('point0 y b', y(moorePoints[0].logY))
+    mooreLine
+        .datum(moorePoints)
+        .attr("d", d3.line()
+            .x(d => x(d.Year))
+            .y(d => y(d.logY))
+        )
 }
 
 function extendAxis(toYear) {
@@ -412,6 +436,11 @@ function extendAxis(toYear) {
 }
 
 function addSlider(data) {
+
+    data.forEach(x => {
+        x.value = Math.log10(x.value);
+    });
+
 
     // set the dimensions and margins of the graph
     let margin = {top: 15, right: 5, bottom: 15, left: 5},
@@ -499,15 +528,19 @@ function addSlider(data) {
             .on("drag", dragMove)
             .on("end", dragEnd));
 
-        function dragMove(event) {
-            let newY = Math.max(0, Math.min(height, event.y - margin.top));
-            knob.attr("cy", newY);
-        }
+    function dragMove(event) {
+        let newY = Math.max(0, Math.min(height, event.y - margin.top));
+        knob.attr("cy", newY);
+        let value = y.invert(knob.attr("cy"));
+        console.log("Selected value: " + value.toFixed(2));
+        updateMooreline(value);
+    }
 
-        function dragEnd(event) {
-            let value = y.invert(knob.attr("cy"));
-            console.log("Selected value: " + value.toFixed(2));
-        }
+    function dragEnd(event) {
+        let value = y.invert(knob.attr("cy"));
+        console.log("Selected value: " + value.toFixed(2));
+        updateMooreline(value);
+    }
 
     // function to update the position of the knob based on the slider value
     function updateKnobPosition(value) {
@@ -540,6 +573,9 @@ function next() {
     } else if (slideN===7) {
         d3.select('#info')
             .html('we estimated how much it would cost to train these models today, based on GPT-3s training cost')
+    } else if (slideN===8) {
+        d3.select('#info')
+            .html('Epoch research has found an <a href="https://epochai.org/blog/trends-in-gpu-price-performance">empirical doubling time of 2.5 years</a> of FLOPs per compute.')
     }
 }
 
